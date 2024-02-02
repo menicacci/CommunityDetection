@@ -216,6 +216,12 @@ public class GraphGeneration {
 
         g.addEdge(5, 6);
 
+        g.addEdge(6, 7);
+
+        g.addEdge(7, 8);
+
+        g.addEdge(1, 10);
+
         return g;
     }
 

@@ -31,7 +31,7 @@ public class DFSTree {
         this.fronds = new HashMap<>();
         this.IDsCorrespondence = new HashMap<>();
 
-        this.setUp();
+        this.generateDFSTree(null, this.getTreeRoot());
     }
 
     public Graph getOriginalGraph() {
@@ -70,11 +70,6 @@ public class DFSTree {
         return biconnectedComponents;
     }
 
-    private void setUp() {
-        this.generateDFSTree(null, this.getTreeRoot());
-        this.clearEdges();
-    }
-
     /*
     This function generates a tree making a Depth First Search through the original graph.
     In the process, the edges are divided into two groups:
@@ -84,39 +79,46 @@ public class DFSTree {
     created have associated an ID that corresponds to the preorder-visit of the graph. This
     will be useful for detecting the bi-connected components (Tarjan).
      */
-    public void generateDFSTree(Node parent, Integer nodeID) {
+    public int generateDFSTree(Node parent, Integer nodeID) {
         // Check if node has been visited
         if (!this.getOriginalGraph().hasBeenVisited(nodeID)) {
             this.getOriginalGraph().setVisit(nodeID);
             // Create a new node
-            Node new_node = this.createNodeForTreeGraph(parent, nodeID);
+            Node new_node = this.createNodeForTreeGraph(parent, this.getOriginalGraph().getNode(nodeID));
 
             // Check node's neighbours to detect edges and fronds
             List<Node> neighbours = this.getOriginalGraph().getNodeNeighbours(nodeID);
             neighbours.forEach(neighbour -> {
                 // If the node's already been explored, then is labeled as a frond
                 boolean isExplored = neighbour.isVisited();
-                HashMap<Integer, List<Integer>> map = isExplored ? this.getFronds() : this.getEdges();
-
-                // Add the arch to the correct map
-                if (!map.containsKey(nodeID)) {
-                    map.put(nodeID, new ArrayList<>());
-                }
-                map.get(nodeID).add(neighbour.getId());
 
                 // If the neighbour has not been explored yet, explore it
                 if (!isExplored) {
-                    generateDFSTree(new_node, neighbour.getId());
+                    int neighbourID = this.generateDFSTree(new_node, neighbour.getId());
+                    if (!this.getEdges().containsKey(nodeID)) {
+                        this.getEdges().put(nodeID, new ArrayList<>());
+                    }
+                    this.getEdges().get(nodeID).add(neighbourID);
+
+                }
+                else {
+                    if (!this.getFronds().containsKey(nodeID)) {
+                        this.getFronds().put(nodeID, new ArrayList<>());
+                    }
+                    this.getFronds().get(nodeID).add(neighbour.getOriginalId());
                 }
             });
+            return new_node.getId();
         }
+        return -1;
     }
 
-    private Node createNodeForTreeGraph(Node parent, Integer nodeID) {
+    private Node createNodeForTreeGraph(Node parent, Node originalNode) {
         // Add the new node to the tree graph, remember OriginalID -> NewID correspondence
         Node new_node = this.getTreeGraph().addNode();
-        this.getIDsCorrespondence().put(nodeID, new_node.getId());
-        new_node.setOriginalId(nodeID);
+        this.getIDsCorrespondence().put(originalNode.getId(), new_node.getId());
+        new_node.setOriginalId(originalNode.getId());
+        originalNode.setOriginalId(new_node.getId());
 
         // Add an edge between the new node and the parent, if it exists
         if (parent != null) {
@@ -198,20 +200,5 @@ public class DFSTree {
         componentsEdges.forEach(edge -> componentNodes.add(edge[0]));
 
         this.getBiconnectedComponents().add(componentNodes);
-    }
-
-    private void clearEdges() {
-        // Clean this.fronds map removing the duplicates
-        this.getEdges().forEach((nodeID, neighbouringNodeIDs) -> {
-            neighbouringNodeIDs.forEach(neighbourID -> {
-                if (this.getFronds().containsKey(neighbourID)) {
-                    this.getFronds().get(neighbourID).remove(nodeID);
-                }
-            });
-        });
-
-        // Swap the IDs of the edges, now they refer to the original graph's nodes
-        this.setEdges(swapEdgesIDs(this.getEdges(), this.getIDsCorrespondence()));
-        this.setFronds(swapEdgesIDs(this.getFronds(), this.getIDsCorrespondence()));
     }
 }
